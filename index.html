@@ -505,11 +505,11 @@
     var battle = parts[1], team = parts[2], tankId = parts[3];
     if(battle !== cfg.battle) return;
     if(team !== "red" && team !== "green") return;
-    if(!payload || payload.length === 0){ delete tanks[team][tankId]; render(); logLine("<- DELETE "+team.toUpperCase()+"/"+tankId); return; }
+    if(!payload || payload.length === 0){ delete tanks[team][tankId]; scheduleRender(); logLine("<- DELETE "+team.toUpperCase()+"/"+tankId); return; }
     var data; try{ data = JSON.parse(payload.toString()); }catch(e){ logLine("Error: bad JSON on "+topic, true); return; }
     tanks[team][tankId] = data; tanks[team][tankId]._id = tankId; tanks[team][tankId]._name = data.DisplayName || tankId;
     logLine("<- DATA "+team.toUpperCase()+"/"+tanks[team][tankId]._name+" (HP:"+data.HP+", Status:'"+data.Status+"')");
-    render();
+    scheduleRender();
     checkBattleEnd();
   }
 
@@ -603,6 +603,8 @@
     logLine("Award complete.");
   }
 
+  var _renderPending=false;
+  function scheduleRender(){ if(_renderPending) return; _renderPending=true; setTimeout(function(){ _renderPending=false; render(); }, 300); }
   function render(){ el.cntRed.textContent = Object.keys(tanks.red).length; el.cntGreen.textContent = Object.keys(tanks.green).length; renderTeam("red"); renderTeam("green"); }
   function renderTeam(team){
     var box = (team==="red") ? el.listRed : el.listGreen; box.innerHTML="";
