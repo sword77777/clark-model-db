@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CLARK MODEL</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23000000'/%3E%3Ctext x='16' y='22' font-size='18' fill='%2300ff41' text-anchor='middle' font-family='monospace'%3ECM%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%234a7dff'/%3E%3Ctext x='16' y='22' font-size='18' font-weight='bold' fill='white' text-anchor='middle' font-family='Arial'%3ECM%3C/text%3E%3C/svg%3E">
 <script src="https://fastly.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
@@ -278,12 +278,13 @@
         <button id="btnPause" class="ghost">Pause Battle</button>
         <button id="btnEnd" class="ghost">End Battle</button>
         <button id="btnRespawn" class="ghost" disabled>Global Respawn</button>
+        <button id="btnResetArena" class="ghost">Reset Arena</button>
         <span class="spacer"></span>
         <button id="btnSettings" class="ghost">Settings</button>
       </div>
       <div id="teams">
-        <div class="team red"><h4><span class="ttl"><span>RED TEAM</span><label class="sortbox"><input type="checkbox" id="sorthp-red">Sort by HP</label></span><span class="cnt" id="cntRed">0</span></h4><div class="thead"><span>Tank</span><span>Operator</span><span>HP</span><span>Ammo</span><span>MG</span><span>Status</span></div><div class="tlist" id="listRed"></div></div>
-        <div class="team blue"><h4><span class="ttl"><span>BLUE TEAM</span><label class="sortbox"><input type="checkbox" id="sorthp-green">Sort by HP</label></span><span class="cnt" id="cntGreen">0</span></h4><div class="thead"><span>Tank</span><span>Operator</span><span>HP</span><span>Ammo</span><span>MG</span><span>Status</span></div><div class="tlist" id="listGreen"></div></div>
+        <div class="team red"><h4><span class="ttl"><span>RED TEAM</span><label class="sortbox"><input type="checkbox" id="sorthp-red">Sort by HP</label></span><span class="cnt" id="cntRed">0</span></h4><div class="thead"><span>Tank</span><span>Operator</span><span>HP/Max</span><span>Ammo</span><span>MG</span><span>Status</span></div><div class="tlist" id="listRed"></div></div>
+        <div class="team blue"><h4><span class="ttl"><span>BLUE TEAM</span><label class="sortbox"><input type="checkbox" id="sorthp-green">Sort by HP</label></span><span class="cnt" id="cntGreen">0</span></h4><div class="thead"><span>Tank</span><span>Operator</span><span>HP/Max</span><span>Ammo</span><span>MG</span><span>Status</span></div><div class="tlist" id="listGreen"></div></div>
       </div>
       <div id="logwrap"><div class="lhead">LOG</div><div id="log"></div></div>
     </section>
@@ -464,6 +465,8 @@
 
   /* ===== 戰況 ===== */
   var cfg = { broker:"broker.emqx.io", port:"8083", battle:"Battle01", key:"clark1234" };
+  var SEND_DISABLED = (location.protocol==="https:" || location.protocol==="wss:");
+  if(SEND_DISABLED){ cfg.key=""; }   // 線上站(https)清空 battle key，本機(local)保留 clark1234
   var client = null, tanks = { red:{}, green:{} }, respawnBusy = false;
   var el = { log:$("log"), listRed:$("listRed"), listGreen:$("listGreen"), cntRed:$("cntRed"),
              cntGreen:$("cntGreen"), conn:$("connpill"), battle:$("battlepill"), timer:$("timer"), respawn:$("btnRespawn"), modal:$("modal"),
@@ -703,6 +706,7 @@
     $("btnSetLevel").addEventListener("click", function(){ setLevel(team, t._id); });
   }
   function sendTankCmd(team, id, command, key, val){
+    if(SEND_DISABLED){ logLine("Send commands disabled on this site.", true); return false; }
     if(!client || !client.connected){ logLine("Error: TK-LINK not connected.", true); return false; }
     var payload = { Command:command }; payload[key]=val;
     client.publish("battle/"+cfg.battle+"/"+team+"/"+id+"/cmd", JSON.stringify(payload), {qos:1});
@@ -737,7 +741,7 @@
     if(!inRow && !inDetail){ clearDetail(); }
   });
 
-  function updateRespawnBtn(){ el.respawn.disabled = !(client && client.connected && cfg.key && cfg.battle && !respawnBusy); }
+  function updateRespawnBtn(){ el.respawn.disabled = SEND_DISABLED || !(client && client.connected && cfg.key && cfg.battle && !respawnBusy); }
   el.respawn.addEventListener("click", function(){
     if(respawnBusy) return; respawnBusy=true; updateRespawnBtn();
     el.respawn.className="bigbtn"; el.respawn.textContent="Global Respawn (5)";
@@ -751,13 +755,20 @@
       if(n%2===0){ var sec=5-(n/2); if(sec>0){ el.respawn.textContent="Global Respawn ("+sec+")"; } }
     },500);
   });
-  function sendRespawn(cmd){ ["red","green"].forEach(function(team){ client.publish("battle/"+cfg.key+"/"+team+"/broadcast/cmd", JSON.stringify({Command:cmd,Value:"FULL"}), {qos:1}); }); }
+  function sendRespawn(cmd){ if(SEND_DISABLED) return; ["red","green"].forEach(function(team){ client.publish("battle/"+cfg.key+"/"+team+"/broadcast/cmd", JSON.stringify({Command:cmd,Value:"FULL"}), {qos:1}); }); }
 
   ["red","green"].forEach(function(t){ var c=$("sorthp-"+t); if(c){ c.addEventListener("change", function(){ renderTeam(t); }); } });
 
   $("btnStart").addEventListener("click", startBattle);
   $("btnPause").addEventListener("click", pauseBattle);
   $("btnEnd").addEventListener("click", endBattleManual);
+
+  $("btnResetArena").addEventListener("click", function(){
+    tanks.red = {}; tanks.green = {};
+    clearDetail();
+    render();
+    logLine("Reset Arena: cleared team data; waiting for fresh telemetry.");
+  });
 
   $("btnSettings").addEventListener("click", function(){
     $("sBroker").value=cfg.broker; $("sPort").value=cfg.port; $("sBattle").value=cfg.battle; $("sKey").value=cfg.key;
