@@ -1,0 +1,6 @@
+# 部署到 GitHub Pages：只上傳網站本體，排除開發輔助檔與自檢輸出
+_shots/
+_parse_categories.py
+_parse_products.py
+_products.txt
+battle.html

@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLARK MODEL</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23000000'/%3E%3Ctext x='16' y='22' font-size='18' fill='%2300ff41' text-anchor='middle' font-family='monospace'%3ECM%3C/text%3E%3C/svg%3E">
+<script src="https://fastly.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#000000; --panel:#0a0a0a; --panel2:#111; --border:#2a2a2a;
+    --text:#ffffff; --dim:#9a9a9a; --link:#8080ff; --blue:#4a7dff;
+    --green:#00ff41; --green-dim:#1a7a37; --blue:#4a7dff; --blue-dim:#2a4a8a; --red:#ff2a2a; --yellow:#ffd23e;
+  }
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--text);font-family:Verdana,Tahoma,'Segoe UI',Arial,sans-serif;display:flex;flex-direction:column;min-height:100vh}
+  a{color:var(--link);text-decoration:none}
+  a:hover{color:var(--blue)}
+  button{font-family:inherit;cursor:pointer}
+
+  /* 首頁/選類別階段：隱藏 banner 與左側列表 */
+  body.pre #banner, body.pre #products{display:none}
+
+  #banner{background:var(--bg);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .brandlogo{height:22px;width:auto;display:block}
+  #brand .logo{font-size:20px;font-weight:bold;color:#fff;letter-spacing:1px;text-decoration:none}
+  #nav{display:flex;gap:2px;flex-wrap:wrap}
+  #nav button{background:none;border:none;color:#fff;padding:9px 14px;font-size:12px;letter-spacing:1px;text-transform:uppercase}
+  #nav button:hover{color:var(--blue)}
+  #nav button.active{color:#fff;border-bottom:2px solid #fff}
+
+  #app{display:flex;flex:1;min-height:0}
+  #products{width:250px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);overflow-y:auto;padding:10px 0;font-family:Tahoma,Arial,sans-serif}
+  #products.off{display:none}
+  #products.off{display:none}
+  #products h4{font-size:13px;color:#fff;padding:7px 16px;margin-top:20px;letter-spacing:1px;border-bottom:1px solid var(--border);font-weight:bold}
+  #products a.p{display:block;color:#ddd;text-decoration:none;padding:5px 16px;font-size:13px}
+  #products a.p::before{content:"";width:10px;height:10px;display:inline-block;vertical-align:middle;margin-right:6px;background:url(assets/square_w.bmp) no-repeat center/contain}
+  .prodsep{height:12px}
+  #store{display:none;padding:18px;font-family:Tahoma,Arial,sans-serif}
+  #store .stitle{font-size:16px;color:#fff;margin:0 0 12px;letter-spacing:1px}
+  #store .pidimg{max-width:260px;height:auto;margin:0 0 14px;display:block}
+  #store table.pid{border-collapse:collapse;width:100%;max-width:640px;font-size:13px;color:#fff}
+  #store table.pid td{border:1px solid #444;padding:5px 10px;vertical-align:top}
+  #store table.pid td.g{font-weight:bold;color:#fff;background:#111;white-space:nowrap;width:120px}
+  #store table.pid td:nth-child(2){color:#9ab8ff;width:90px}
+  #tdetail{width:320px;max-width:320px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);font-family:Tahoma,Arial,sans-serif;display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;opacity:1;transition:max-width .35s ease,opacity .3s ease,border-right-width .3s ease}
+  #tdetail.off{max-width:0;opacity:0;border-right-width:0}
+  #tdetail .dhead{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border);color:#fff;letter-spacing:1px;font-size:10px}
+  #tdetail .dhead .ghost{color:var(--dim)}
+  #dtBody{padding:12px;font-size:13px;color:#ddd}
+  #dtBody .empty{color:#8a8a8a;font-size:10px}
+  #dtBody .dgrid{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:10px}
+  #dtBody .dgrid b{color:#fff;font-weight:normal}
+  #dtBody .lk_on{color:var(--green)}
+  #dtBody .lk_off{color:var(--red)}
+  #dtBody .rssi_good{color:var(--green)}
+  #dtBody .rssi_mid{color:var(--yellow)}
+  #dtBody .rssi_bad{color:var(--red)}
+  #dtBody .df{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+  #dtBody .df span{background:#111;border:1px solid #333;padding:4px 8px}
+  #dtBody .df b{color:#fff;margin-right:3px}
+  #dtBody .setrow{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;margin-top:8px}
+  #dtBody .setrow label{white-space:nowrap}
+  #dtBody input{background:#000;color:#fff;border:1px solid #444;padding:5px 6px;font-family:Tahoma;font-size:10px;box-sizing:border-box;flex:1;min-width:0;max-width:66%;height:30px}
+  #dtBody .setbtn{background:none;border:1px solid #4a4a4a;color:#fff;padding:0 10px;font-size:10px;cursor:pointer;height:30px;display:inline-flex;align-items:center;box-sizing:border-box}
+  #dtBody .setbtn:hover{color:var(--blue);border-color:var(--blue)}
+  .trow{cursor:pointer;color:#fff}
+  .trow.sel.red{background:rgba(255,42,42,.20)}
+  .trow.sel.blue{background:rgba(74,125,255,.18)}
+  #products a.p:hover{color:var(--blue);background:var(--panel2)}
+  #products a.p.active{color:var(--blue)}
+  #main{flex:1;display:flex;flex-direction:column;min-width:0}
+
+  /* ===== 全屏步驟頁（選語言 / 選類別） ===== */
+  #lang,#cat{display:none;flex-direction:column;flex:1;align-items:center;justify-content:center;padding:30px;text-align:center}
+  #lang.on,#cat.on{display:flex}
+  #lang h1,#cat h1{font-size:40px;color:#fff;letter-spacing:3px;margin-bottom:8px}
+  .sub{color:var(--dim);margin-bottom:34px;font-size:13px;letter-spacing:1px}
+  .brandimg{max-width:min(540px,90vw);height:auto;margin-bottom:10px}
+  #lang .brandimg{margin-bottom:112px}
+  #cat .brandimg{margin-bottom:112px}
+  .copyright{color:var(--dim);font-size:11px;line-height:1.7;max-width:560px;text-align:center;margin-top:34px;padding:0 16px}
+  .block{margin-bottom:28px;width:min(560px,94vw)}
+  .block h3{font-size:13px;color:var(--dim);letter-spacing:2px;margin-bottom:14px;text-transform:uppercase}
+  .chips{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .chip{padding:14px 26px;border:1px solid var(--border);color:#fff;font-size:16px;letter-spacing:1px;background:var(--panel);min-width:150px}
+  .chip:hover{color:var(--blue);border-color:var(--blue)}
+  .chip .st{display:block;font-size:10px;color:var(--dim);margin-top:4px;letter-spacing:.5px}
+
+  /* ===== 主站（Tank 類別） ===== */
+  #mainv{display:none;flex:1;flex-direction:column;min-height:0}
+  #mainv.on{display:flex}
+  #mainv .hero{text-align:center;padding:22px 26px;border-bottom:1px solid var(--border)}
+  #mainv .hero h2{font-size:24px;color:#fff;letter-spacing:1px}
+  #mainv .hero p{color:var(--dim);margin-top:6px;font-size:13px}
+  #detail{flex:1;overflow-y:auto;padding:28px 34px}
+  #detail .empty{color:var(--dim);font-size:13px}
+  #detail h3{color:#fff;font-size:20px;margin-bottom:6px}
+  #detail .path{color:var(--dim);font-size:12px;margin-bottom:18px;word-break:break-all}
+  #detail .note{border:1px solid var(--border);background:var(--panel);padding:14px;color:var(--dim);font-size:13px;border-radius:6px}
+
+  /* ===== 戰況（黑底綠字） ===== */
+  #battle{display:none;flex:1;flex-direction:column;min-height:0;padding:12px 14px;gap:10px;background:var(--bg);color:var(--text);font-family:Tahoma,Arial,sans-serif}
+  #battle.on{display:flex}
+  #connbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .pill{padding:0 14px;border:1px solid var(--border);border-radius:4px;font-size:10px;display:inline-flex;align-items:center;height:30px;box-sizing:border-box}
+  .pill.ok{color:var(--blue);border-color:var(--blue-dim)}
+  #connbar #battlepill{color:var(--blue);border-color:var(--blue-dim)}
+  .pill.bad{color:var(--red);border-color:var(--red)}
+  #connbar .spacer{flex:1}
+  #connbar .bigbtn{padding:0 16px;font-size:10px;border:none;background:var(--blue);color:#fff;font-weight:bold;border-radius:4px;height:30px;box-sizing:border-box;display:inline-flex;align-items:center}
+  #connbar .bigbtn:disabled{background:#333;color:#888}
+  #connbar .ghost{background:none;border:1px solid var(--border);color:#cfe0ff;padding:0 14px;border-radius:4px;font-size:10px;height:30px;box-sizing:border-box;display:inline-flex;align-items:center}
+  #connbar .ghost:disabled{opacity:.45;cursor:default}
+  #connbar .ghost:hover{color:var(--blue);border-color:var(--blue)}
+  #teams{display:flex;gap:14px;flex:1;min-height:0}
+  .team{flex:1;display:flex;flex-direction:column;border:1px solid var(--border);background:#0d0d0d;border-radius:6px;min-width:0}
+  .team h4{padding:8px 12px;font-size:14px;letter-spacing:1px;display:flex;justify-content:space-between;align-items:center}
+  .team h4 .ttl{display:flex;align-items:center;gap:10px}
+  .sortbox{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--blue);cursor:pointer;font-weight:normal;letter-spacing:0}
+  .sortbox input{width:auto;accent-color:var(--blue);margin:0;cursor:pointer}
+  .team.red h4{color:var(--red);border-bottom:2px solid var(--red)}
+  .team.blue h4{color:var(--blue);border-bottom:2px solid var(--blue)}
+  .thead,.trow{display:grid;grid-template-columns:1.2fr 1.5fr 1fr .8fr .8fr 1fr;gap:6px;padding:6px 10px;font-size:10px;align-items:center;font-family:Tahoma,Arial,sans-serif}
+  .thead{color:#6a7a94;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+  .trow{border-bottom:1px solid #161616}
+  .trow .hp{display:flex;flex-direction:column;gap:2px}
+  .hpbar{height:8px;background:#222;border-radius:2px;overflow:hidden}
+  .hpbar i{display:block;height:100%}
+  .hptxt{font-size:10px;color:#6a7a94}
+  .tag{padding:1px 7px;border-radius:3px;font-size:10px}
+  .tag.normal{color:var(--green)}
+  .tag.damaged{color:var(--yellow)}
+  .tag.destroyed{color:var(--red)}
+  .op{font-size:10px}
+  .op .star{color:var(--yellow)}
+  #logwrap{border:1px solid var(--border);background:#0d0d0d;border-radius:6px;height:110px;display:flex;flex-direction:column}
+  #logwrap .lhead{padding:4px 10px;font-size:10px;color:#6a7a94;border-bottom:1px solid #161616}
+  #log{flex:1;overflow-y:auto;padding:4px 10px;font-size:10px;color:#a8c8ff;white-space:pre-wrap;word-break:break-all}
+  #log .err{color:var(--red)}
+
+  #modal{position:fixed;inset:0;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;z-index:50}
+  #modal.on{display:flex}
+  #modal .box{background:var(--panel2);border:1px solid var(--border);border-radius:8px;width:min(460px,94vw);padding:18px;font-family:Tahoma,Arial,sans-serif}
+  #modal h3{color:var(--blue);margin-bottom:14px;letter-spacing:1px;font-family:Tahoma,Arial,sans-serif;font-size:10px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:10px;color:var(--dim);margin-bottom:4px}
+  .field input{width:100%;padding:5px 6px;background:#000;border:1px solid var(--border);color:#fff;border-radius:4px;font-family:Tahoma;font-size:10px;box-sizing:border-box;height:30px}
+  .field input:focus{outline:none;border-color:var(--blue)}
+  #modal .actions{display:flex;gap:8px;margin-top:16px}
+  #modal .actions button{flex:1;padding:10px;border:none;border-radius:4px;font-size:14px;font-weight:bold}
+  #modal .save{background:var(--blue);color:#fff}
+  #modal .cancel{background:#222;color:#fff}
+
+  #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#111;border:1px solid var(--border);color:#fff;padding:10px 18px;font-size:13px;border-radius:6px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:60}
+  #toast.on{opacity:1}
+
+  @media (max-width:760px){
+    #app{flex-direction:column}
+    #products{width:100%;border-right:none;border-bottom:1px solid var(--border);max-height:200px}
+    #tdetail{width:100%;max-width:100%;border-right:none;border-bottom:1px solid var(--border)}
+    #teams{flex-direction:column}
+    .thead{display:none}
+    #nav{margin-left:0}
+  }
+</style>
+</head>
+<body class="pre">
+
+<header id="banner">
+  <div id="brand"><a class="logo" href="#lang"><img class="brandlogo" src="assets/logos.bmp" alt="CLARK MODEL"></a></div>
+  <nav id="nav">
+    <button data-nav="news">News</button>
+    <button data-nav="products">Products</button>
+    <button data-nav="reference">Reference</button>
+    <button data-nav="project">Project</button>
+    <button data-nav="contact">Contact Us</button>
+    <button data-nav="store">Online Store</button>
+    <button data-nav="battle">Battle</button>
+  </nav>
+</header>
+
+<div id="app">
+  <aside id="products"></aside>
+  <aside id="tdetail" class="off">
+    <div class="dhead"><span id="dtName">TANK DETAIL</span><button id="dtClose" class="ghost">×</button></div>
+    <div id="dtBody"></div>
+  </aside>
+
+  <main id="main">
+    <!-- ===== 步驟1：選語言（全屏） ===== -->
+    <section id="lang">
+      <img class="brandimg" src="assets/bannerE.bmp" alt="CLARK MODEL">
+      <div class="block">
+        <h3>Select Language</h3>
+        <div class="chips">
+          <button class="chip" data-lang="en">English</button>
+          <button class="chip" data-lang="zh">繁體中文 <span class="st">(Coming Soon)</span></button>
+          <button class="chip" data-lang="ja">日本語 <span class="st">(Coming Soon)</span></button>
+          <button class="chip" data-lang="fr">Fran&ccedil;ais <span class="st">(Coming Soon)</span></button>
+          <button class="chip" data-lang="de">Deutsch <span class="st">(Coming Soon)</span></button>
+        </div>
+      </div>
+      <div class="copyright">The information, images and movies contained on this web site are the exclusive property of CLARK MODEL. Except for non-commercial or personal use, the information, images and movies may not be used, duplicated or modified, even partially, without written authorization from CLARK MODEL.</div>
+    </section>
+
+    <!-- ===== 步驟2：選類別（全屏） ===== -->
+    <section id="cat">
+      <img class="brandimg" src="assets/bannerE.bmp" alt="CLARK MODEL">
+      <div class="block">
+        <h3>Select Category</h3>
+        <div class="chips">
+          <button class="chip" data-cat="tank">Tank <span class="st">RC Battle Tank</span></button>
+          <button class="chip" data-cat="robot">Robot <span class="st">Coming Soon</span></button>
+          <button class="chip" data-cat="ships">Ships <span class="st">Coming Soon</span></button>
+          <button class="chip" data-cat="tracks">Trucks <span class="st">Coming Soon</span></button>
+        </div>
+      </div>
+      <div class="copyright">The information, images and movies contained on this web site are the exclusive property of CLARK MODEL. Except for non-commercial or personal use, the information, images and movies may not be used, duplicated or modified, even partially, without written authorization from CLARK MODEL.</div>
+    </section>
+
+    <!-- ===== 步驟3：主站（Tank） ===== -->
+    <section id="mainv">
+      <div class="hero">
+        <h2>RC BATTLE TANK</h2>
+        <p>Electronic upgrades, sound modules &amp; kits. 點左側分類查看產品說明。</p>
+      </div>
+      <div id="detail">
+        <div class="empty">請在左側選擇產品分類與產品，此處顯示產品說明。</div>
+      </div>
+      <div id="store">
+        <h3 class="stitle">Product Identification System</h3>
+        <img class="pidimg" src="assets/prod_ID_all.bmp" alt="Product ID">
+        <table class="pid">
+          <tr><td class="g">Device</td><td></td><td></td></tr>
+          <tr><td></td><td>TK20</td><td>TK20 Tank Controller</td></tr>
+          <tr><td></td><td>TK22</td><td>TK22 Tank Controller</td></tr>
+          <tr><td></td><td>TK22A</td><td>TK22A Tank Controller</td></tr>
+          <tr><td></td><td>TK24</td><td>TK24 Tank Controller</td></tr>
+          <tr><td></td><td>TK40</td><td>TK40 Tank Controller</td></tr>
+          <tr><td></td><td>TK60</td><td>TK60 Tank Controller</td></tr>
+          <tr><td></td><td>TK80</td><td>TK80 Tank Controller</td></tr>
+          <tr><td></td><td>MTK37</td><td>MTK37 Military Truck Controller</td></tr>
+          <tr><td></td><td>MFK01</td><td>MFK01 Tractor Controller</td></tr>
+          <tr><td></td><td>TTK60</td><td>TTK60 Tank Turret Controller</td></tr>
+          <tr><td></td><td>TTK24</td><td>TTK24 Tank Turret Controller</td></tr>
+          <tr><td></td><td>TTK37</td><td>TTK37 Tank Turret Controller</td></tr>
+          <tr><td></td><td>TCK60</td><td>TCK60 Tank Chassis Controller</td></tr>
+          <tr><td></td><td>TCK24</td><td>TCK24 Tank Chassis Controller</td></tr>
+          <tr><td></td><td>TCK37</td><td>TCK37 Tank Chassis Controller</td></tr>
+          <tr><td></td><td>TK16</td><td>TK16 Tank Controller</td></tr>
+          <tr><td></td><td>GTK37</td><td>Flakpanzer Gepard Tank Turret Controller</td></tr>
+          <tr><td class="g">Variant</td><td></td><td></td></tr>
+          <tr><td></td><td>Blank</td><td>Standard, Equal to P Variant in TK60 series</td></tr>
+          <tr><td></td><td>S</td><td>Support S.BUS interface</td></tr>
+          <tr><td></td><td>L</td><td>No sound programmability, only seen in TK60 series</td></tr>
+          <tr><td></td><td>P</td><td>Sound Programmable</td></tr>
+          <tr><td></td><td>G2</td><td>Support dual-axial Gun Stabilizer</td></tr>
+          <tr><td></td><td>W</td><td>With preordered wire on CN1A, CN1B, CN6A, CN6B, CN7A and CN7B pads</td></tr>
+          <tr><td class="g">Sound Pack</td><td></td><td></td></tr>
+          <tr><td></td><td>T1</td><td>Tiger I</td></tr>
+          <tr><td></td><td>KT</td><td>King Tiger</td></tr>
+          <tr><td></td><td>CH2_V1</td><td>Challenger 2 ver. 1</td></tr>
+          <tr><td></td><td>.....</td><td>Refer to TK Sound Pack webpage for more information</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== 戰況 ===== -->
+    <section id="battle">
+      <div id="connbar">
+        <span id="connpill" class="pill bad">Disconnected</span>
+        <span id="battlepill" class="pill">Battle: --</span>
+        <span id="timer" class="pill">Game Timer: 00:00</span>
+        <button id="btnStart" class="ghost">Start Battle</button>
+        <button id="btnPause" class="ghost">Pause Battle</button>
+        <button id="btnEnd" class="ghost">End Battle</button>
+        <button id="btnRespawn" class="ghost" disabled>Global Respawn</button>
+        <span class="spacer"></span>
+        <button id="btnSettings" class="ghost">Settings</button>
+      </div>
+      <div id="teams">
+        <div class="team red"><h4><span class="ttl"><span>RED TEAM</span><label class="sortbox"><input type="checkbox" id="sorthp-red">Sort by HP</label></span><span class="cnt" id="cntRed">0</span></h4><div class="thead"><span>Tank</span><span>Operator</span><span>HP</span><span>Ammo</span><span>MG</span><span>Status</span></div><div class="tlist" id="listRed"></div></div>
+        <div class="team blue"><h4><span class="ttl"><span>BLUE TEAM</span><label class="sortbox"><input type="checkbox" id="sorthp-green">Sort by HP</label></span><span class="cnt" id="cntGreen">0</span></h4><div class="thead"><span>Tank</span><span>Operator</span><span>HP</span><span>Ammo</span><span>MG</span><span>Status</span></div><div class="tlist" id="listGreen"></div></div>
+      </div>
+      <div id="logwrap"><div class="lhead">LOG</div><div id="log"></div></div>
+    </section>
+  </main>
+</div>
+
+<div id="modal">
+  <div class="box">
+    <h3>TK-LINK Settings</h3>
+    <div class="field"><label>Broker</label><input id="sBroker" value="broker.emqx.io"></div>
+    <div class="field"><label>WebSocket Port</label><input id="sPort" value="8083"></div>
+    <div class="field"><label>Battle Name</label><input id="sBattle" value="Battle01"></div>
+    <div class="field"><label>Battle Key (for send commands)</label><input id="sKey" value="clark1234"></div>
+    <div class="actions"><button class="save" id="btnSave">Save &amp; Connect</button><button class="cancel" id="btnCancel">Cancel</button></div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+
+  /* ===== 產品分類資料 ===== */
+  var CATEGORIES = [
+    { name:"1/16 RC Tank Controller", items:[
+      ["TK6.0 series","prod_rx10/index.html"],["TK20 series","prod_rx20/index.html"],["TK20A series","prod_rx20a/index.html"],
+      ["TK40 series","prod_rx40/index.html"],["TK50 series","prod_rx50/index.html"],["TK5050 series","prod_rx5050/index.html"],
+      ["TK50H series","prod_rx50_haya/index.html"],["TK50X series","prod_rx50x/index.html"],["TK60 series","prod_rx60/index.html"],
+      ["TK70 series","prod_rx70/index.html"],["TK80 series","prod_rx80/index.html"],["TK80X series","prod_rx80x/index.html"],
+      ["TK60G2 series","prod_rx60g2/index.html"],["RC2HL series","prod_rc2hl/index.html"],["TSK series","prod_tsk/index.html"],
+      ["AATK50 series","prod_aatk50/index.html"],["Switch module","howto_smoke_unit/index.html"],["SLK series","prod_slk/index.html"]
+    ]},
+    { name:"Digital Battlefield", items:[
+      ["DBF-HUB",""],["DBF-FE","prod_dbf_fe/index.html"],["EXT-FE","prod_tk70_fe/index.html"]
+    ]},
+    { name:"Field Tank Training System", items:[
+      ["FTTS Series","prod_rx60g3/index_full.html"]
+    ]},
+    { name:"1/16 Armored Car Controller", items:[
+      ["ACK40 series","prod_ack40/index.html"]
+    ]},
+    { name:"Military Truck Controller", items:[
+      ["MTK37/40 Series","prod_mtk37/index.html"]
+    ]},
+    { name:"FPV system", items:[
+      ["Circle-1",""]
+    ]},
+    { name:"RC tank Radio system", items:[
+      ["DBF16S","rc_dbf16s/index.htm"]
+    ]},
+    { name:"RC Tank Controller Supplements", items:[
+      ["TK22 Tutorial","prod_rx20_tu/index.html"],["Modify HL tank for TK controllers",""],
+      ["TK Programmer","tool_tk_programmer/index.html"],["TK Programmer PRO","tool_tk_programmer_pro/index.html"],
+      ["TK Sound Pack Programming","tool_tk_sound_pack_programming/index.html"],["TK Sound Packer","tool_tk_sound_packer/index.html"],
+      ["TK Sound Pack for Tank","prod_sound_set/index.html"],["Gun Barrel Stabilizer (GBS)","tool_gbs/index.html"],
+      ["Engine Sound Simulation","engine_sim/index.html"],["Digital Battle Field",""],["Trouble Shooting","trouble/index.html"],
+      ["Tank Personalization",""]
+    ]},
+    { name:"1/16 Conversion/Upgrade Kit", items:[
+      ["Tamiya Gepard (16001)",""],["Tamiya Leopard 1A4 (16002)",""],["Mato M4 Sherman","model_mato_m4/index.html"],
+      ["Taigen Tiger I (16004)","kit_116_HL_T1/index.htm"],["Taigen Tiger I (16004A)","kit_116_HL_T1_16004A/index.htm"],
+      ["TAMIYA M4 Sherman (16006)","kit_116_tamiya%20m4_105mm/index.htm"],["TAMIYA Tiger I (16008)","kit_16008/index.htm"],
+      ["Tamiya KingTiger (16009)","kit_116_tamiya_KT/index.htm"],["HengLong KV-1 (16010)","kit_116_HL_KV1/index.htm"],
+      ["Universal Servo Recoil (16011)","kit_116_HL_universal_recoil/index.htm"],["Universal Servo Recoil L (16011L)","kit_116_HL_universal_recoil_2/index.htm"],
+      ["Elevation Gear Set (16012)","kit_16012/index.htm"],["Elevation Gear Set A (16012A)","kit_16012a/index.htm"],
+      ["MO PUMA (16013)",""],["Universal Turret Rotation (16014)","kit_16014/index.htm"],
+      ["HengLong M1A2","model_hl_m1/index.html"],["HengLong Leopard2A6","model_hl_l2/index.html"],["HengLong Challenger 2","model_hl_CH2/index.html"],
+      ["HengLong T-90","model_hl_t90/index.html"],["HengLong US Military Truck (3853A)","model_hl_MT_3853A/index.html"],["Torr KV-2","model_kv2/index.html"]
+    ]},
+    { name:"1/16 IR battle Kit", items:[
+      ["IR Unit","prod_ir_unit/index.html"],["TBU base Unit","prod_tbu_base/index.html"],["Battle Unit",""]
+    ]},
+    { name:"1/35 RC Tank Series", items:[
+      ["TK30 Series","prod_rx30/index.html"],["CSCII","prod_csc2/index.html"],["ESC4","prod_esc4/index.html"],
+      ["LNS","prod_lns/index.html"],["LNSII","prod_lns2/index.html"],["TX-1","prod_tx1/index.html"],
+      ["DBF TX","prod_dbf_tx/index.html"],["DBF RX","prod_dbf_rx/index.html"],["GEAR and MOTOR","prod_bgear/index.html"]
+    ]},
+    { name:"1/6 RC Tank Controller", items:[
+      ["TK16 series","prod_rx16/index.html"],["TK16G2 series","prod_rx16g2/index.html"]
+    ]},
+    { name:"1/6 Conversion/Upgrade Kit", items:[
+      ["MB Willys","kit_1_6_MB_WILLYS/index.htm"]
+    ]},
+    { name:"RC Conversion Kit", items:[
+      ["1/16 Bruder CAT EXCAVATOR","kit_116_bruder_excavator/index.htm"],["1/35 M1 Abrams",""],["1/16 Pz.Kpfw 38(t)",""],
+      ["1/35 TAMIYA M4A3E8","kit_135_m4a3e8/index.htm"],["1/35 DML M4A3E8","kit_135_m4a3e8_dml/index.htm"],
+      ["1/35 TAMIYA JS-2",""],["1/35 TAMIYA JSU-152",""]
+    ]},
+    { name:"RC Car Series", items:[
+      ["MFK01 (Tractor)","prod_mfk01/index.html"],["MFK02 (Excavator)","prod_mfk02/index.html"],["MFK03 (Truck)","prod_mfk03/index.html"],
+      ["MFK04 (Racer)","prod_mfk04/index.html"],["MFK05 (Off-road)","prod_mfk05/index.html"],["MFK35 (1/35 Off-road)","prod_mfk35/index.html"],
+      ["Sound Pack for Car","prod_sound_set_car/index.html"],["MFK Sound Pack Programming","tool_tk_sound_pack_programming_mfk/index.html"]
+    ]},
+    { name:"Real Sound Action Set for Aircraft", items:[
+      ["ROCAF IDF CHING-KUO","prod_real_sound_action_set/index.html"],["ROCAF AH-64E","prod_real_sound_action_set/index.html"]
+    ]}
+  ];
+
+  /* ===== 左側分類＋產品 ===== */
+  var aside = $("products");
+  var pt = document.createElement("h4"); pt.textContent = "PRODUCTS"; aside.appendChild(pt);
+  var sp = document.createElement("div"); sp.className="prodsep"; aside.appendChild(sp);
+  CATEGORIES.forEach(function(cat){
+    var h = document.createElement("h4"); h.textContent = cat.name; aside.appendChild(h);
+    cat.items.forEach(function(p){
+      var a = document.createElement("a"); a.className="p"; a.textContent = p[0];
+      a.addEventListener("click", function(e){ e.preventDefault(); showProduct(p[0], p[1]); markActive(a); });
+      aside.appendChild(a);
+    });
+  });
+
+  /* ===== toast ===== */
+  var tEl = $("toast"), tTimer=null;
+  function toast(msg){ tEl.textContent=msg; tEl.classList.add("on"); clearTimeout(tTimer); tTimer=setTimeout(function(){tEl.classList.remove("on");},1600); }
+
+  /* ===== 流程導航：lang → cat → main（battle） ===== */
+  function show(view){
+    var pre = (view==="lang" || view==="cat");
+    document.body.classList.toggle("pre", pre);
+    $("lang").classList.toggle("on", view==="lang");
+    $("cat").classList.toggle("on", view==="cat");
+    $("mainv").classList.toggle("on", view==="mainv");
+    $("battle").classList.toggle("on", view==="battle");
+    $("products").classList.toggle("off", view==="battle");
+    if(view==="battle"){ renderDetailPane(); } else { $("tdetail").classList.add("off"); }
+    var btns = document.querySelectorAll("#nav button");
+    for(var i=0;i<btns.length;i++){ btns[i].classList.toggle("active", btns[i].getAttribute("data-nav")===view); }
+  }
+
+  // 步驟1：選語言 → 步驟2
+  document.querySelectorAll("#lang [data-lang]").forEach(function(b){
+    b.addEventListener("click", function(){ var l=b.getAttribute("data-lang");
+      if(l==="en"){ show("cat"); } else { toast("Language coming soon - stay English"); }
+    });
+  });
+  // 步驟2：選類別 → 步驟3
+  document.querySelectorAll("#cat [data-cat]").forEach(function(b){
+    b.addEventListener("click", function(){ var c=b.getAttribute("data-cat");
+      if(c==="tank"){ show("mainv"); } else { toast("Category coming soon - Tank only for now"); }
+    });
+  });
+
+  // banner 選單
+  function showSubview(name){
+    var hero=document.querySelector("#mainv .hero"), st=$("store"), det=$("detail");
+    if(name==="store"){ hero.style.display="none"; det.style.display="none"; st.style.display="block"; }
+    else { hero.style.display=""; det.style.display=""; st.style.display="none"; }
+  }
+  document.querySelectorAll("#nav button").forEach(function(b){
+    b.addEventListener("click", function(){ var v=b.getAttribute("data-nav");
+      if(v==="store"){ show("mainv"); showSubview("store"); return; }
+      if(v==="products"){ show("mainv"); showSubview("products"); return; }
+      if(v==="news"){ show("mainv"); showSubview("products"); toast("NEWS - coming soon"); return; }
+      if(v==="reference"||v==="project"||v==="contact"){ toast(v.toUpperCase()+" - coming soon"); return; }
+      show(v);
+    });
+  });
+
+  // 點 banner 最左邊小 logo → 回到選語言頁
+  document.querySelector("#brand a.logo").addEventListener("click", function(e){
+    e.preventDefault(); show("lang");
+  });
+
+  /* ===== 主區顯示產品說明（占位） ===== */
+  function showProduct(name, path){
+    if(!path){ toast(name+" - coming soon"); return; }
+    var d = $("detail");
+    d.innerHTML = "<h3>"+name+"</h3><div class='path'>"+path+"</div>"
+      +"<div class='note'>此產品說明頁正在建置中（下一階段）。點擊側邊其他產品可切換查看。</div>";
+    toast(name);
+  }
+  function markActive(a){
+    var as = document.querySelectorAll("#products a.p");
+    for(var i=0;i<as.length;i++){ as[i].classList.remove("active"); }
+    a.classList.add("active");
+  }
+
+  /* ===== 戰況 ===== */
+  var cfg = { broker:"broker.emqx.io", port:"8083", battle:"Battle01", key:"clark1234" };
+  var client = null, tanks = { red:{}, green:{} }, respawnBusy = false;
+  var el = { log:$("log"), listRed:$("listRed"), listGreen:$("listGreen"), cntRed:$("cntRed"),
+             cntGreen:$("cntGreen"), conn:$("connpill"), battle:$("battlepill"), timer:$("timer"), respawn:$("btnRespawn"), modal:$("modal"),
+             tdetail:$("tdetail"), dtName:$("dtName"), dtBody:$("dtBody") };
+
+  function logLine(msg, isErr){
+    var t = new Date().toTimeString().slice(0,8);
+    var d = document.createElement("div"); if(isErr) d.className="err";
+    d.textContent = "["+t+"] "+msg; el.log.appendChild(d); el.log.scrollTop = el.log.scrollHeight;
+  }
+
+  function connect(){
+    if(client){ try{ client.end(true); }catch(e){} client=null; }
+    if(typeof mqtt === "undefined"){ logLine("Error: MQTT.js not loaded.", true); return; }
+    var ws = (cfg.port==="443"||cfg.port==="8084") ? "wss" : "ws";
+    var url = ws+"://"+cfg.broker+":"+cfg.port+"/mqtt";
+    client = mqtt.connect(url, { clientId:"clarkweb_"+Math.random().toString(16).slice(2,8), reconnectPeriod:3000 });
+    client.on("connect", function(){
+      el.conn.textContent = "Connected"; el.conn.className="pill ok";
+      el.battle.textContent = "Battle: "+cfg.battle;
+      client.subscribe("battle/+/red/+"); client.subscribe("battle/+/green/+");
+      logLine("Connected to "+cfg.broker+":"+cfg.port);
+      logLine("Subscribing battle/* (Battle='"+cfg.battle+"')");
+      updateRespawnBtn();
+    });
+    client.on("close", function(){ el.conn.textContent="Disconnected"; el.conn.className="pill bad"; updateRespawnBtn(); });
+    client.on("error", function(e){ logLine("MQTT error: "+e.message, true); });
+    client.on("message", function(topic, payload){ onMessage(topic, payload); });
+  }
+
+  function onMessage(topic, payload){
+    var parts = topic.split("/");
+    if(parts.length !== 4 || parts[0] !== "battle") return;
+    var battle = parts[1], team = parts[2], tankId = parts[3];
+    if(battle !== cfg.battle) return;
+    if(team !== "red" && team !== "green") return;
+    if(!payload || payload.length === 0){ delete tanks[team][tankId]; render(); logLine("<- DELETE "+team.toUpperCase()+"/"+tankId); return; }
+    var data; try{ data = JSON.parse(payload.toString()); }catch(e){ logLine("Error: bad JSON on "+topic, true); return; }
+    tanks[team][tankId] = data; tanks[team][tankId]._id = tankId; tanks[team][tankId]._name = data.DisplayName || tankId;
+    logLine("<- DATA "+team.toUpperCase()+"/"+tanks[team][tankId]._name+" (HP:"+data.HP+", Status:'"+data.Status+"')");
+    render();
+    checkBattleEnd();
+  }
+
+  /* ===== 對戰控制：Start / Pause / End（含全滅偵測 + AwardStars 派點） ===== */
+  var battleRunning=false, battleActive=false, battleElapsed=0, tickStart=0, battleTimerId=null;
+  function pad2(n){ return String(n).padStart(2,"0"); }
+  function updateTimerLabel(){
+    if(!el.timer) return;
+    var ms = battleElapsed + (battleRunning ? (Date.now()-tickStart) : 0);
+    var s=Math.floor(ms/1000);
+    el.timer.textContent="Game Timer: "+pad2(Math.floor(s/60))+":"+pad2(s%60);
+  }
+  function setPauseBtn(active){ var b=$("btnPause"); if(b){ b.className = active ? "bigbtn" : "ghost"; } }
+  function startBattle(){
+    if(Object.keys(tanks.red).length===0 || Object.keys(tanks.green).length===0){ logLine("Error: Need both Red and Green teams to have connected tanks to start the battle.", true); return; }
+    battleActive=true; battleRunning=true; battleElapsed=0; tickStart=Date.now();
+    if(!battleTimerId){ battleTimerId=setInterval(updateTimerLabel,1000); }
+    updateTimerLabel();
+    logLine("Battle '"+cfg.battle+"' started.");
+  }
+  function pauseBattle(){
+    if(!battleActive){ logLine("Error: Battle not started.", true); return; }
+    if(battleRunning){
+      battleElapsed += Date.now()-tickStart;
+      battleRunning=false;
+      setPauseBtn(true);
+      updateTimerLabel();
+      logLine("Battle '"+cfg.battle+"' paused.");
+    } else {
+      tickStart=Date.now();
+      battleRunning=true;
+      setPauseBtn(false);
+      updateTimerLabel();
+      logLine("Battle '"+cfg.battle+"' resumed.");
+    }
+  }
+  function teamOnline(team){ return Object.keys(tanks[team]).map(function(k){ return tanks[team][k]; }); }
+  function endBattleManual(){
+    if(!battleRunning){ logLine("Error: Battle not started.", true); return; }
+    var redOnline=teamOnline("red"), greenOnline=teamOnline("green");
+    var redAlive=redOnline.filter(function(t){ return parseFloat(t.HP)>0; });
+    var greenAlive=greenOnline.filter(function(t){ return parseFloat(t.HP)>0; });
+    if(!redOnline.length || !greenOnline.length){ logLine("Error: Both teams need connected tanks.", true); return; }
+    var winner=null;
+    if(!redAlive.length && greenAlive.length) winner="green";
+    else if(!greenAlive.length && redAlive.length) winner="red";
+    else if(redAlive.length>greenAlive.length) winner="red";
+    else if(greenAlive.length>redAlive.length) winner="green";
+    else{
+      var rs=redAlive.reduce(function(a,t){ return a+parseFloat(t.HP); },0);
+      var gs=greenAlive.reduce(function(a,t){ return a+parseFloat(t.HP); },0);
+      if(rs>gs) winner="red"; else if(gs>rs) winner="green";
+    }
+    endBattle("Manually ended", winner);
+  }
+  function checkBattleEnd(){
+    if(!battleRunning) return;
+    var redOnline=teamOnline("red"), greenOnline=teamOnline("green");
+    function wiped(lst){ if(!lst.length) return false; return lst.every(function(t){ return !(parseFloat(t.HP)>0); }); }
+    var rw=wiped(redOnline), gw=wiped(greenOnline);
+    if(rw&&gw) endBattle("Both teams wiped out", null);
+    else if(rw) endBattle("Red team wiped out", "green");
+    else if(gw) endBattle("Green team wiped out", "red");
+  }
+  function endBattle(reason, winner){
+    if(!battleRunning) return;
+    battleElapsed += Date.now()-tickStart;
+    battleActive=false; battleRunning=false;
+    setPauseBtn(false);
+    updateTimerLabel();
+    logLine("Battle ended: "+reason);
+    if(winner===null){ logLine("Draw: both teams 0 points, no award."); return; }
+    var loser = winner==="red"?"green":"red";
+    logLine("Winner: "+winner.toUpperCase()+" ("+loser.toUpperCase()+" 0 pts). Team-averaged HP award...");
+    var wList=[];
+    Object.keys(tanks[winner]).forEach(function(k){
+      var t=tanks[winner][k];
+      var hp=parseFloat(t.HP), max=parseFloat(t.MaxHP);
+      if(isNaN(hp)||isNaN(max)||max<=0) return;
+      wList.push({t:t,hp:hp,max:max});
+    });
+    if(!wList.length){ logLine("Award skipped: no connected tanks in winner team."); return; }
+    var sumPct=wList.reduce(function(a,x){ return a+x.hp/x.max*100; },0);
+    var avgPct=sumPct/wList.length;
+    var pts=Math.round(avgPct/100*10);
+    logLine("  Team avg HP "+avgPct.toFixed(1)+"% -> "+pts+" pts per member");
+    wList.forEach(function(x){
+      sendTankCmd(winner, x.t._id, "AwardStars", "Stars", pts);
+      logLine("  "+winner.toUpperCase()+"/"+x.t._name+": HP "+x.hp.toFixed(0)+"/"+x.max.toFixed(0)+" -> "+pts+" pts");
+    });
+    logLine("Award complete.");
+  }
+
+  function render(){ el.cntRed.textContent = Object.keys(tanks.red).length; el.cntGreen.textContent = Object.keys(tanks.green).length; renderTeam("red"); renderTeam("green"); }
+  function renderTeam(team){
+    var box = (team==="red") ? el.listRed : el.listGreen; box.innerHTML="";
+    var arr = Object.keys(tanks[team]).map(function(k){ return tanks[team][k]; });
+    var cb = $("sorthp-"+team);
+    if(cb && cb.checked){ arr.sort(function(a,b){ return (b.HP||0)-(a.HP||0); }); }
+    arr.forEach(function(t){
+      var r = row(team,t);
+      if(selected && selected.team===team && selected.id===t._id){ r.classList.add("sel", team==="red"?"red":"blue"); }
+      box.appendChild(r);
+    });
+    if(selected){
+      var st = tanks[selected.team] ? tanks[selected.team][selected.id] : null;
+      if(st){ renderDetail(selected.team, st); } else { clearDetail(); }
+    }
+  }
+  function row(team,t){
+    var d=document.createElement("div"); d.className="trow";
+    var hp=parseFloat(t.HP), max=parseFloat(t.MaxHP); if(isNaN(hp))hp=0; if(isNaN(max))max=100;
+    var pct=max>0?Math.min(100,Math.max(0,hp/max*100)):0;
+    var st=String(t.Status||"").toLowerCase();
+    var scolor = st==="destroyed"?"var(--red)":st==="damaged"?"var(--yellow)":"var(--green)";
+    var nm=document.createElement("span"); nm.textContent=t._name;
+    var op=document.createElement("span"); op.className="op";
+    op.innerHTML = esc(t.Operator||"-")+(t.Stars>0?" <span class='star'>★"+Math.floor(t.Stars)+"</span>":"")+(t.Level>0?" Lv."+Math.floor(t.Level):"");
+    var hpb=document.createElement("span"); hpb.className="hp";
+    hpb.innerHTML="<div class='hpbar'><i style='width:"+pct.toFixed(0)+"%;background:"+scolor+"'></i></div><span class='hptxt'>"+(isNaN(parseFloat(t.HP))?"--":t.HP)+(max>0?" / "+max:"")+"</span>";
+    var tag=document.createElement("span"); tag.className="tag "+(st==="destroyed"?"destroyed":st==="damaged"?"damaged":"normal"); tag.textContent=(t.Status||"-");
+    var am=document.createElement("span"); am.className="am"; am.textContent = (t.Ammo!=null?t.Ammo:"-");
+    var mg=document.createElement("span"); mg.className="mg"; mg.textContent = (t.MG!=null?t.MG:"-");
+    d.appendChild(nm); d.appendChild(op); d.appendChild(hpb); d.appendChild(am); d.appendChild(mg); d.appendChild(tag);
+    d.addEventListener("click", function(){ selectTank(team, t._id); });
+    return d;
+  }
+  function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
+
+  /* ===== Tank Detail（選中一台坦克，可設 Star/Level） ===== */
+  var selected = null;
+  function selectTank(team, id){
+    selected = { team:team, id:id };
+    var t = tanks[team][id];
+    if(!t){ clearDetail(); return; }
+    $("tdetail").classList.remove("off");
+    $("dtName").textContent = "TANK DETAIL - "+t._name;
+    renderDetail(team, t);
+    render();
+  }
+  function clearDetail(){
+    selected = null;
+    $("tdetail").classList.add("off");
+    render();
+  }
+  function renderDetailPane(){
+    if(selected && tanks[selected.team] && tanks[selected.team][selected.id]){
+      $("tdetail").classList.remove("off");
+      var t = tanks[selected.team][selected.id];
+      $("dtName").textContent = "TANK DETAIL - "+t._name;
+      renderDetail(selected.team, t);
+    } else {
+      clearDetail();
+    }
+  }
+  function renderDetail(team, t){
+    function f(v){ return (v!=null && v!=="") ? v : "-"; }
+    var b = $("dtBody");
+    function lockHtml(val){ var on=!!val; return "<span class='"+(on?"lk_on":"lk_off")+"'>"+(on?"Locked":"Lost")+"</span>"; }
+    function rssiHtml(v){
+      var n=parseFloat(v); if(isNaN(n)) return "<span>-</span>";
+      var c=n>=-60?"rssi_good":(n>=-80?"rssi_mid":"rssi_bad");
+      return "<span class='"+c+"'>"+n+" dBm</span>";
+    }
+    b.innerHTML = ""
+      +"<div class='dgrid'>"
+      +"<b>RF LOCK</b><span>"+(t.RF_lock!=null?lockHtml(t.RF_lock):"<span>-</span>")+"</span>"
+      +"<b>WiFi RSSI</b><span>"+rssiHtml(t.rssi)+"</span>"
+      +"<b>TK LOCK</b><span>"+(t.TK_lock!=null?lockHtml(t.TK_lock):"<span>-</span>")+"</span>"
+      +(t.BattleName!=null?"<b>Battle Name</b><span>"+esc(t.BattleName)+"</span>":"")
+      +"<b>Team</b><span>"+(team==="red"?"RED":"BLUE")+"</span>"
+      +"<b>Tank ID</b><span>"+esc(t._id||"-")+"</span>"
+      +"<b>IR ID</b><span>"+f(t.IR_ID)+"</span>"
+      +"<b>Display Name</b><span>"+esc(t.DisplayName||t._name||"-")+"</span>"
+      +"<b>Operator</b><span>"+esc(t.Operator||"-")+"</span>"
+      +"<b>HP / Max</b><span>"+f(t.HP)+" / "+f(t.MaxHP)+"</span>"
+      +"<b>Status</b><span>"+esc(t.Status||"-")+"</span>"
+      +"<b>Ammo</b><span>"+f(t.Ammo)+"</span>"
+      +"<b>MG</b><span>"+f(t.MG)+"</span>"
+      +"<b>Level</b><span>"+f(t.Level)+"</span>"
+      +"<b>Stars</b><span>"+f(t.Stars)+"</span>"
+      +"</div>"
+      +"<div class='setrow'><label>Display Name:</label><input id='inDname' value='"+esc(t.DisplayName||t._name||"")+"'>"
+      +"<button class='setbtn' id='btnSetDname'>Set Name</button></div>"
+      +"<div class='setrow'><label>Operator:</label><input id='inOp' value='"+esc(t.Operator||"")+"'>"
+      +"<button class='setbtn' id='btnSetOp'>Set Operator</button></div>"
+      +"<div class='setrow'><label>Stars:</label><input id='inStars' value='"+(t.Stars!=null?Math.floor(t.Stars):0)+"'>"
+      +"<button class='setbtn' id='btnSetStars'>Set Stars</button></div>"
+      +"<div class='setrow'><label>Level:</label><input id='inLevel' value='"+(t.Level!=null?Math.floor(t.Level):1)+"'>"
+      +"<button class='setbtn' id='btnSetLevel'>Set Level</button></div>";
+    $("btnSetDname").addEventListener("click", function(){ setDisplayName(team, t._id); });
+    $("btnSetOp").addEventListener("click", function(){ setOperator(team, t._id); });
+    $("btnSetStars").addEventListener("click", function(){ setStars(team, t._id); });
+    $("btnSetLevel").addEventListener("click", function(){ setLevel(team, t._id); });
+  }
+  function sendTankCmd(team, id, command, key, val){
+    if(!client || !client.connected){ logLine("Error: TK-LINK not connected.", true); return false; }
+    var payload = { Command:command }; payload[key]=val;
+    client.publish("battle/"+cfg.battle+"/"+team+"/"+id+"/cmd", JSON.stringify(payload), {qos:1});
+    logLine("-> "+command+"="+val+" to "+team.toUpperCase()+"/"+id);
+    return true;
+  }
+  function setDisplayName(team, id){
+    var v = $("inDname").value.trim();
+    if(!v){ logLine("Error: Display Name cannot be empty.", true); return; }
+    if(!sendTankCmd(team, id, "SetDisplayName", "DisplayName", v)) return;
+    if(tanks[team][id]){ tanks[team][id].DisplayName = v; tanks[team][id]._name = v; render(); renderDetailPane(); }
+  }
+  function setOperator(team, id){
+    var v = $("inOp").value.trim();
+    if(!v){ logLine("Error: Operator cannot be empty.", true); return; }
+    if(!sendTankCmd(team, id, "SetOperator", "Operator", v)) return;
+    if(tanks[team][id]){ tanks[team][id].Operator = v; render(); renderDetailPane(); }
+  }
+  function setStars(team, id){
+    var v = parseInt($("inStars").value,10); if(isNaN(v)){ logLine("Error: Stars must be a number.", true); return; }
+    v = Math.max(0, v); sendTankCmd(team, id, "SetStars", "Stars", v);
+  }
+  function setLevel(team, id){
+    var v = parseInt($("inLevel").value,10); if(isNaN(v)){ logLine("Error: Level must be a number.", true); return; }
+    v = Math.max(1, Math.min(99, v)); sendTankCmd(team, id, "SetLevel", "Level", v);
+  }
+  $("dtClose").addEventListener("click", clearDetail);
+  document.addEventListener("click", function(e){
+    if(!selected) return;
+    var inRow = e.target.closest(".trow");
+    var inDetail = e.target.closest("#tdetail");
+    if(!inRow && !inDetail){ clearDetail(); }
+  });
+
+  function updateRespawnBtn(){ el.respawn.disabled = !(client && client.connected && cfg.key && cfg.battle && !respawnBusy); }
+  el.respawn.addEventListener("click", function(){
+    if(respawnBusy) return; respawnBusy=true; updateRespawnBtn();
+    el.respawn.className="bigbtn"; el.respawn.textContent="Global Respawn (5)";
+    logLine("Global Respawn: sending respawn command for 5s (10 bursts)...");
+    var n=0; var timer=setInterval(function(){
+      if(n>=10){ clearInterval(timer); sendRespawn("RespawnStop"); sendRespawn("RespawnStop");
+        logLine("Global Respawn sequence completed: RespawnStop sent.");
+        el.respawn.className="ghost"; el.respawn.textContent="Global Respawn";
+        respawnBusy=false; updateRespawnBtn(); return; }
+      sendRespawn("RespawnStart"); n++;
+      if(n%2===0){ var sec=5-(n/2); if(sec>0){ el.respawn.textContent="Global Respawn ("+sec+")"; } }
+    },500);
+  });
+  function sendRespawn(cmd){ ["red","green"].forEach(function(team){ client.publish("battle/"+cfg.key+"/"+team+"/broadcast/cmd", JSON.stringify({Command:cmd,Value:"FULL"}), {qos:1}); }); }
+
+  ["red","green"].forEach(function(t){ var c=$("sorthp-"+t); if(c){ c.addEventListener("change", function(){ renderTeam(t); }); } });
+
+  $("btnStart").addEventListener("click", startBattle);
+  $("btnPause").addEventListener("click", pauseBattle);
+  $("btnEnd").addEventListener("click", endBattleManual);
+
+  $("btnSettings").addEventListener("click", function(){
+    $("sBroker").value=cfg.broker; $("sPort").value=cfg.port; $("sBattle").value=cfg.battle; $("sKey").value=cfg.key;
+    el.modal.classList.add("on");
+  });
+  $("btnCancel").addEventListener("click", function(){ el.modal.classList.remove("on"); });
+  $("btnSave").addEventListener("click", function(){
+    cfg.broker=$("sBroker").value.trim()||"broker.emqx.io"; cfg.port=$("sPort").value.trim()||"8083";
+    cfg.battle=$("sBattle").value.trim()||"Battle01"; cfg.key=$("sKey").value.trim();
+    el.modal.classList.remove("on");
+    logLine("Settings saved: "+cfg.broker+":"+cfg.port+" Battle='"+cfg.battle+"'");
+    connect();
+  });
+
+  // 初始：步驟1 選語言
+  show("lang");
+  connect();
+})();
+</script>
+</body>
+</html>
