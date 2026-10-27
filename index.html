@@ -45,6 +45,17 @@
   #store table.pid td{border:1px solid #444;padding:5px 10px;vertical-align:top}
   #store table.pid td.g{font-weight:bold;color:#fff;background:#111;white-space:nowrap;width:120px}
   #store table.pid td:nth-child(2){color:#9ab8ff;width:90px}
+  #download{display:none;padding:18px;font-family:Tahoma,Arial,sans-serif}
+  #download .stitle{font-size:16px;color:#fff;margin:0 0 12px;letter-spacing:1px}
+  #download .dnote{color:var(--dim);font-size:13px;max-width:640px;line-height:1.6;margin:0 0 16px}
+  #download .dlcard{border:1px solid var(--border);background:var(--panel);padding:16px;max-width:640px;border-radius:6px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  #download .dlname{font-size:15px;color:#fff;flex:1;min-width:200px}
+  #download .dlmeta{color:var(--dim);font-size:12px}
+  #download .dlbtn{display:inline-block;background:var(--blue);color:#fff;padding:10px 22px;border-radius:4px;text-decoration:none;font-size:13px}
+  #download .dlbtn:hover{filter:brightness(1.15)}
+  #download h4{color:#fff;font-size:14px;margin:20px 0 8px;letter-spacing:.5px}
+  #download ol{color:#dbe6ff;font-size:13px;line-height:1.7;padding-left:20px;max-width:640px}
+  #download ol b{color:#fff}
   #tdetail{width:320px;max-width:320px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);font-family:Tahoma,Arial,sans-serif;display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;opacity:1;transition:max-width .35s ease,opacity .3s ease,border-right-width .3s ease}
   #tdetail.off{max-width:0;opacity:0;border-right-width:0}
   #tdetail .dhead{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border);color:#fff;letter-spacing:1px;font-size:10px}
@@ -179,6 +190,7 @@
     <button data-nav="contact">Contact Us</button>
     <button data-nav="store">Online Store</button>
     <button data-nav="battle">Battle</button>
+    <button data-nav="download">Download</button>
   </nav>
 </header>
 
@@ -266,7 +278,28 @@
           <tr><td></td><td>.....</td><td>Refer to TK Sound Pack webpage for more information</td></tr>
         </table>
       </div>
-    </section>
+          <div id="download">
+        <h3 class="stitle">Download Tank Sim <span style="color:var(--dim);font-size:12px">(Windows)</span></h3>
+        <p class="dnote">Practice your SLK03 setup before you buy. This standalone simulator lets you run a
+          virtual tank on your own Windows PC, configure it, then open this website's
+          <b>Battle</b> page to verify your settings &mdash; no tank hardware required.</p>
+        <div class="dlcard">
+          <div>
+            <div class="dlname">TankSim_Standalone.exe</div>
+            <div class="dlmeta">Standalone simulator &middot; Windows &middot; v1.0</div>
+          </div>
+          <a class="dlbtn" href="downloads/TankSim_Standalone.exe">Download EXE</a>
+        </div>
+        <h4>How to use</h4>
+        <ol>
+          <li>Download and run <b>TankSim_Standalone.exe</b> on your Windows PC (no install needed).</li>
+          <li>Enter the settings you plan to use on your SLK03: TK-LINK broker &amp; port, your WiFi, Display Name, Team, Battle name and Battle key.</li>
+          <li>Press <b>Start Sim</b> &mdash; a virtual tank appears and reports to the battle.</li>
+          <li>Open this website's <b>Battle</b> page and pick your battle to verify the tank is live.</li>
+          <li>Open several instances with different Display Names to simulate many tanks at once.</li>
+        </ol>
+      </div>
+</section>
 
     <!-- ===== 戰況 ===== -->
     <section id="battle">
@@ -430,15 +463,17 @@
 
   // banner 選單
   function showSubview(name){
-    var hero=document.querySelector("#mainv .hero"), st=$("store"), det=$("detail");
-    if(name==="store"){ hero.style.display="none"; det.style.display="none"; st.style.display="block"; }
-    else { hero.style.display=""; det.style.display=""; st.style.display="none"; }
+    var hero=document.querySelector("#mainv .hero"), st=$("store"), det=$("detail"), dl=$("download");
+    if(name==="store"){ hero.style.display="none"; det.style.display="none"; st.style.display="block"; dl.style.display="none"; }
+    else if(name==="download"){ hero.style.display="none"; det.style.display="none"; st.style.display="none"; dl.style.display="block"; }
+    else { hero.style.display=""; det.style.display=""; st.style.display="none"; dl.style.display="none"; }
   }
   document.querySelectorAll("#nav button").forEach(function(b){
     b.addEventListener("click", function(){ var v=b.getAttribute("data-nav");
       if(v==="store"){ show("mainv"); showSubview("store"); return; }
       if(v==="products"){ show("mainv"); showSubview("products"); return; }
       if(v==="news"){ show("mainv"); showSubview("products"); toast("NEWS - coming soon"); return; }
+      if(v==="download"){ show("mainv"); showSubview("download"); return; }
       if(v==="reference"||v==="project"||v==="contact"){ toast(v.toUpperCase()+" - coming soon"); return; }
       show(v);
     });
