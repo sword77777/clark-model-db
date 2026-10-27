@@ -499,6 +499,14 @@
     client.on("message", function(topic, payload){ onMessage(topic, payload); });
   }
 
+  /* [AGENT ADD] 頁籤回到前景時：若連線斷了自動重連（背景分頁的 JS 會被瀏覽器節流，自動重連可能失效） */
+  document.addEventListener("visibilitychange", function(){
+    if(document.visibilityState === "visible"){
+      if(!client){ connect(); }
+      else if(!client.connected){ logLine("Tab visible: TK-LINK was offline, reconnecting..."); connect(); }
+    }
+  });
+
   function onMessage(topic, payload){
     var parts = topic.split("/");
     if(parts.length !== 4 || parts[0] !== "battle") return;
