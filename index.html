@@ -478,14 +478,16 @@
   function connect(){
     if(client){ try{ client.end(true); }catch(e){} client=null; }
     if(typeof mqtt === "undefined"){ logLine("Error: MQTT.js not loaded.", true); return; }
-    var ws = (cfg.port==="443"||cfg.port==="8084") ? "wss" : "ws";
-    var url = ws+"://"+cfg.broker+":"+cfg.port+"/mqtt";
+    var secure = (location.protocol === "https:" || location.protocol === "wss:");
+    var ws = secure ? "wss" : ((cfg.port==="443"||cfg.port==="8084") ? "wss" : "ws");
+    var port = secure ? "8084" : cfg.port;
+    var url = ws+"://"+cfg.broker+":"+port+"/mqtt";
     client = mqtt.connect(url, { clientId:"clarkweb_"+Math.random().toString(16).slice(2,8), reconnectPeriod:3000 });
     client.on("connect", function(){
       el.conn.textContent = "Connected"; el.conn.className="pill ok";
       el.battle.textContent = "Battle: "+cfg.battle;
       client.subscribe("battle/+/red/+"); client.subscribe("battle/+/green/+");
-      logLine("Connected to "+cfg.broker+":"+cfg.port);
+      logLine("Connected to "+cfg.broker+":"+port);
       logLine("Subscribing battle/* (Battle='"+cfg.battle+"')");
       updateRespawnBtn();
     });
