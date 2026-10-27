@@ -185,7 +185,7 @@
 <div id="app">
   <aside id="products"></aside>
   <aside id="tdetail" class="off">
-    <div class="dhead"><span id="dtName">TANK DETAIL</span><button id="dtClose" class="ghost">×</button></div>
+    <div class="dhead"><span id="dtName">Tank Detail</span><button id="dtClose" class="ghost">×</button></div>
     <div id="dtBody"></div>
   </aside>
 
@@ -656,7 +656,7 @@
     var t = tanks[team][id];
     if(!t){ clearDetail(); return; }
     $("tdetail").classList.remove("off");
-    $("dtName").textContent = "TANK DETAIL - "+t._name;
+    $("dtName").textContent = "Tank Detail - "+t._name;
     renderDetail(team, t);
     render();
   }
@@ -669,7 +669,7 @@
     if(selected && tanks[selected.team] && tanks[selected.team][selected.id]){
       $("tdetail").classList.remove("off");
       var t = tanks[selected.team][selected.id];
-      $("dtName").textContent = "TANK DETAIL - "+t._name;
+      $("dtName").textContent = "Tank Detail - "+t._name;
       renderDetail(selected.team, t);
     } else {
       clearDetail();
@@ -686,9 +686,9 @@
     }
     b.innerHTML = ""
       +"<div class='dgrid'>"
-      +"<b>RF LOCK</b><span>"+(t.RF_lock!=null?lockHtml(t.RF_lock):"<span>-</span>")+"</span>"
+      +"<b>RF Lock</b><span>"+(t.RF_lock!=null?lockHtml(t.RF_lock):"<span>-</span>")+"</span>"
       +"<b>WiFi RSSI</b><span>"+rssiHtml(t.rssi)+"</span>"
-      +"<b>TK LOCK</b><span>"+(t.TK_lock!=null?lockHtml(t.TK_lock):"<span>-</span>")+"</span>"
+      +"<b>TK Lock</b><span>"+(t.TK_lock!=null?lockHtml(t.TK_lock):"<span>-</span>")+"</span>"
       +(t.BattleName!=null?"<b>Battle Name</b><span>"+esc(t.BattleName)+"</span>":"")
       +"<b>Team</b><span>"+(team==="red"?"RED":"BLUE")+"</span>"
       +"<b>Tank ID</b><span>"+esc(t._id||"-")+"</span>"
